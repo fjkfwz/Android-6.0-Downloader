@@ -17,6 +17,8 @@ import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Created by jz on 2015/10/29.
@@ -25,29 +27,39 @@ public class DownloadService extends Service {
     public static final String Action_START = "ACTION_START";
     public static final String Action_STOP = "ACTION_STOP";
     public static final String Action_UPDATA = "ACTION_UPDATA";
+    public static final String Action_FINISH = "ACTION_FINISH";
     protected static String DOWNLOAD_PATH =
             Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/";
     public static final int MSG_INIT = 0;
-    private DownloadTask downloadTask;
+    private Map<Integer, DownloadTask> mTasks = new LinkedHashMap<>();
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         /**
          * Action
          */
+        if (intent != null) {
+            Log.i("Action", intent.getAction().toString());
+            if (Action_START.equals(intent.getAction())) {
+                FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
+                if (fileInfo != null) {
+                    Log.i("test_ACTION_START", fileInfo.toString());
+//                    new InitThread(fileInfo).start();
+                    DownloadTask.executorService.execute(new InitThread(fileInfo));
+                }
+            } else if (Action_STOP.equals(intent.getAction())) {
+                Log.i("test_Action_STOP", ">>>>>>>Download Task>>>>>>>>>");
+                FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
+                if (fileInfo != null) {
+                    Log.i("test_Action_STOP", ">>>>>>>Download Tasking>>>>>>>>>");
+                    DownloadTask downloadTask = mTasks.get(fileInfo.getId());
+                    if (downloadTask == null) {
+                        Log.i("test_Action_STOP", ">>>>>>>Download Task Null>>>>>>>>>");
+                    } else if (downloadTask != null) {
+                        Log.i("test_Action_STOP", ">>>>>>>Download Task Stopping>>>>>>>>>");
+                        downloadTask.isPause = true;
+                    }
 
-        if (Action_START.equals(intent.getAction())) {
-            FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
-            if (fileInfo != null) {
-                Log.i("test_ACTION_START", fileInfo.toString());
-                new InitThread(fileInfo).start();
-            }
-        } else if (Action_STOP.equals(intent.getAction())) {
-            FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
-            if (fileInfo != null) {
-                Log.i("test_Action_STOP", fileInfo.toString());
-                if (downloadTask != null) {
-                    downloadTask.isPause = true;
                 }
             }
         }
@@ -67,8 +79,9 @@ public class DownloadService extends Service {
                 case MSG_INIT:
                     FileInfo fileInfo = (FileInfo) msg.obj;
                     Log.i("length", "length" + fileInfo.getLenght());
-                    downloadTask = new DownloadTask(DownloadService.this, fileInfo);
+                    DownloadTask downloadTask = new DownloadTask(DownloadService.this, fileInfo, 3);
                     downloadTask.download();
+                    mTasks.put(fileInfo.getId(), downloadTask);
                     break;
             }
         }
@@ -101,7 +114,6 @@ public class DownloadService extends Service {
                 if (length <= 0) {
                     return;
                 }
-
                 File dir = new File(DOWNLOAD_PATH);
                 Log.i("PATH", dir.toString());
                 if (!dir.exists()) {

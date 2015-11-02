@@ -17,24 +17,25 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.makeblaze.myapplication.Services.DownloadService;
 import com.makeblaze.myapplication.entities.FileInfo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
-    private FileInfo fileInfo;
     private static final int EXTERNAL_STORAGE_REQ_CODE = 10;
-    private ProgressBar progressBar;
-
+    private List<FileInfo> filelist;
+    private FilelistAdapter mAdapter;
     public void requestPermission() {
         //判断当前Activity是否已经获得了该权限
         if (ContextCompat.checkSelfPermission(this,
@@ -58,16 +59,28 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onReceive(Context context, Intent intent) {
             if (DownloadService.Action_UPDATA.equals(intent.getAction())) {
-                int finish = intent.getIntExtra("finish", 0);
-                progressBar.setProgress(finish);
+                Log.i("Receiver Updata Message","Receiver Updata Message");
+                int finish = intent.getIntExtra("finished", 0);
+                Log.i("finish",finish+"");
+                int id =intent.getIntExtra("id",0);
+                Log.i("id",id+"");
+//                progressBar.setProgress(finish);
+                mAdapter.updateprogress(id, finish);
+            }else if (DownloadService.Action_FINISH.equals(intent.getAction())) {
+                Log.i("Receiver Finish Message","Receiver Finish Message");
+                int id = intent.getIntExtra("id", 0);
+                FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileinfo");
+                mAdapter.updateprogress(id,100);
             }
         }
     };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        requestPermission();
         initFileInfo();
         initView();
         initBroadcastReceiver();
@@ -76,6 +89,7 @@ public class MainActivity extends AppCompatActivity
     private void initBroadcastReceiver() {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(DownloadService.Action_UPDATA);
+        intentFilter.addAction(DownloadService.Action_FINISH);
         registerReceiver(mBroadcastReceiver, intentFilter);
     }
 
@@ -105,37 +119,25 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void initFileInfo() {
-        String url = "http://www.imooc.com/mobile/mukewang.apk";
-        fileInfo = new FileInfo(0, url, "imooc", 0, 0);
+        filelist = new ArrayList<FileInfo>();
+        FileInfo fileInfo1 = new FileInfo(1, "http://www.imooc.com/mobile/mukewang.apk", "imooc.apk", 0, 0);
+        FileInfo fileInfo2 = new FileInfo(2, "http://www.imooc.com/mobile/mukewang.apk", "imooc.apk", 0, 0);
+        FileInfo fileInfo3 = new FileInfo(3, "http://www.imooc.com/mobile/mukewang.apk", "imooc.apk", 0, 0);
+        FileInfo fileInfo4 = new FileInfo(4, "http://www.imooc.com/mobile/mukewang.apk", "imooc.apk", 0, 0);
+        FileInfo fileInfo5 = new FileInfo(5, "http://www.imooc.com/mobile/mukewang.apk", "imooc.apk", 0, 0);
+        filelist.add(fileInfo1);
+        filelist.add(fileInfo2);
+        filelist.add(fileInfo3);
+        filelist.add(fileInfo4);
+        filelist.add(fileInfo5);
     }
 
     private void initView() {
-        TextView textView = (TextView) findViewById(R.id.content);
-        textView.setText(fileInfo.getFilename());
-        progressBar = (ProgressBar) findViewById(R.id.progressbar);
-        Button mStart = (Button) findViewById(R.id.start);
-        Button mStop = (Button) findViewById(R.id.stop);
+        ListView listView = (ListView) findViewById(R.id.listview);
+        mAdapter = new FilelistAdapter(this, filelist);
+        listView.setAdapter(mAdapter);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        mStart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                requestPermission();
-                Intent intent = new Intent(MainActivity.this, DownloadService.class);
-                intent.setAction("ACTION_START");
-                intent.putExtra("fileInfo", fileInfo);
-                startService(intent);
-            }
-        });
-        mStop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, DownloadService.class);
-                intent.setAction("ACTION_STOP");
-                intent.putExtra("fileInfo", fileInfo);
-                startService(intent);
-            }
-        });
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override

@@ -10,12 +10,20 @@ import android.database.sqlite.SQLiteOpenHelper;
  */
 public class DBHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "download.db";
-    private static final int VERSION = 1;
+    private static DBHelper dbHelper;
+    private static int VERSION = 1;
     private static final String SQL_CREATE = "create table thread_info(_id integer primary key autoincrement, " +
             "thread_id integer,url text,start integer,end integer, finished integer)";
     private static final String SQL_DROP = "drop table if exits thread_info";
 
-    public DBHelper(Context context) {
+    public static DBHelper getInstance(Context context) {
+        if (dbHelper == null) {
+            dbHelper = new DBHelper(context);
+        }
+        return dbHelper;
+    }
+
+    private DBHelper(Context context) {
         super(context, DB_NAME, null, VERSION);
     }
 
